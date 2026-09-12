@@ -28,7 +28,7 @@ const int   daylightOffset_sec = 3600; // Ora legale (+1 ora)
 String latitude = "43.92";
 String longitude = "11.03";
 float  kWpImpianto = 6.0;
-String orientamento = "Est";
+float  orientamentoGradi = 90.0; // Gradi bussola: 0=Nord, 90=Est, 180=Sud, 270=Ovest
 int    inclinazione = 30;
 
 // Dati Meteo & Produzione (Indice 0 = Oggi, 1..6 = Giorni successivi)
@@ -50,12 +50,14 @@ String getOraAttuale() {
   return String(timeStringBuff);
 }
 
-// --- MAPPA L'ORIENTAMENTO TESTUALE NELL'AZIMUTH RICHIESTO DA OPEN-METEO ---
-// Convenzione Open-Meteo: 0 = Sud, -90 = Est, 90 = Ovest
+// --- CONVERTE I GRADI BUSSOLA NELL'AZIMUTH RICHIESTO DA OPEN-METEO ---
+// Bussola: 0 = Nord, 90 = Est, 180 = Sud, 270 = Ovest (senso orario)
+// Open-Meteo: 0 = Sud, -90 = Est, 90 = Ovest, ±180 = Nord
 float calcolaAzimuth() {
-  if (orientamento.equalsIgnoreCase("Est")) return -90.0;
-  if (orientamento.equalsIgnoreCase("Ovest")) return 90.0;
-  return 0.0; // Sud
+  float azimuth = orientamentoGradi - 180.0;
+  if (azimuth < -180.0) azimuth += 360.0;
+  if (azimuth > 180.0) azimuth -= 360.0;
+  return azimuth;
 }
 
 // --- FUNZIONE PER CALCOLARE IL FATTORE DI CONVERSIONE K PERSONALIZZATO ---
@@ -311,11 +313,8 @@ void handleRoot() {
   html += "<label>Longitudine</label><input type='text' name='lon' value='" + longitude + "'>";
   html += "<label>Potenza Impianto (kWp)</label><input type='text' name='kwp' value='" + String(kWpImpianto) + "'>";
   html += "<label>Inclinazione (&deg;)</label><input type='text' name='incl' value='" + String(inclinazione) + "'>";
-  html += "<label>Orientamento</label><select name='orient'>";
-  html += "<option value='Est' " + String(orientamento == "Est" ? "selected" : "") + ">Est</option>";
-  html += "<option value='Sud' " + String(orientamento == "Sud" ? "selected" : "") + ">Sud</option>";
-  html += "<option value='Ovest' " + String(orientamento == "Ovest" ? "selected" : "") + ">Ovest</option>";
-  html += "</select>";
+  html += "<label>Orientamento bussola (&deg;: 0=Nord, 90=Est, 180=Sud, 270=Ovest)</label>";
+  html += "<input type='number' name='orient' min='0' max='360' step='1' value='" + String(orientamentoGradi, 0) + "'>";
   html += "<button type='submit' class='submit'>Salva Configurazione</button>";
   html += "</form>";
   html += "</div>";
@@ -371,14 +370,14 @@ void handleSetLocation() {
     longitude = server.arg("lon");
     if (server.hasArg("kwp")) kWpImpianto = server.arg("kwp").toFloat();
     if (server.hasArg("incl")) inclinazione = server.arg("incl").toInt();
-    if (server.hasArg("orient")) orientamento = server.arg("orient");
+    if (server.hasArg("orient")) orientamentoGradi = server.arg("orient").toFloat();
 
     preferences.begin("solar_cfg", false);
     preferences.putString("lat", latitude);
     preferences.putString("lon", longitude);
     preferences.putFloat("kwp", kWpImpianto);
     preferences.putInt("incl", inclinazione);
-    preferences.putString("orient", orientamento);
+    preferences.putFloat("orientDeg", orientamentoGradi);
     preferences.end();
 
     aggiornaDatiSolari();
@@ -409,7 +408,7 @@ void setup() {
   longitude = preferences.getString("lon", "11.03");
   kWpImpianto = preferences.getFloat("kwp", 6.0);
   inclinazione = preferences.getInt("incl", 30);
-  orientamento = preferences.getString("orient", "Est");
+  orientamentoGradi = preferences.getFloat("orientDeg", 90.0);
   preferences.end();
 
   WiFiManager wm;
