@@ -39,6 +39,11 @@ String nomiGiorni[7];        // Nomi brevi dei giorni (es. Dom, Lun...)
 unsigned long ultimoAggiornamentoMeteo = 0;
 const unsigned long intervalloMeteo = 300000; // Aggiorna ogni 5 minuti
 
+// Schermata "Info Prodotto" temporanea sul display LCD
+bool mostraInfoLCD = false;
+unsigned long timestampInfoLCD = 0;
+const unsigned long durataInfoLCD = 6000; // 6 secondi
+
 // --- OTTIENI L'ORA CORRENTE FORMATTATA ---
 String getOraAttuale() {
   struct tm timeinfo;
@@ -149,10 +154,12 @@ void aggiornaDisplay() {
   tft.setTextSize(1);
   tft.print(getOraAttuale());
 
-  tft.setCursor(85, 4);
+  String ipStr = "IP:" + WiFi.localIP().toString();
+  int xIP = 160 - (int)(ipStr.length() * 6) - 2; // allineato a destra, con margine
+  if (xIP < 40) xIP = 40; // non sovrapporre mai l'orario a sinistra
+  tft.setCursor(xIP, 4);
   tft.setTextColor(ST7735_MAGENTA);
-  tft.print("IP:.");
-  tft.print(WiFi.localIP()[3]);
+  tft.print(ipStr);
   
   tft.drawFastHLine(0, 14, 160, ST7735_BLUE);
 
@@ -234,6 +241,49 @@ void aggiornaDisplay() {
     tft.setTextSize(1);
     tft.print("kWh");
   }
+}
+
+// --- SCHERMATA TEMPORANEA "INFO PRODOTTO" SUL DISPLAY LCD ---
+void mostraInfoProdottoLCD() {
+  tft.fillScreen(ST7735_BLACK);
+
+  // Icona sole disegnata con le primitive grafiche (nessun file immagine necessario)
+  int cx = 137, cy = 18, r = 8;
+  tft.fillCircle(cx, cy, r, ST7735_YELLOW);
+  for (int a = 0; a < 360; a += 45) {
+    float rad = a * 3.14159 / 180.0;
+    int x1 = cx + (r + 3) * cos(rad);
+    int y1 = cy + (r + 3) * sin(rad);
+    int x2 = cx + (r + 7) * cos(rad);
+    int y2 = cy + (r + 7) * sin(rad);
+    tft.drawLine(x1, y1, x2, y2, ST7735_YELLOW);
+  }
+
+  tft.setCursor(4, 6);
+  tft.setTextColor(ST7735_CYAN);
+  tft.setTextSize(2);
+  tft.println("SOLAR32");
+
+  tft.setTextSize(1);
+  tft.setCursor(4, 28);
+  tft.setTextColor(ST7735_YELLOW);
+  tft.println("di Marco Ruggeri");
+
+  tft.drawFastHLine(0, 40, 160, ST7735_BLUE);
+
+  tft.setCursor(4, 48);
+  tft.setTextColor(ST7735_WHITE);
+  tft.println("Monitoraggio e previsione");
+  tft.setCursor(4, 58);
+  tft.println("produzione fotovoltaica");
+  tft.setCursor(4, 68);
+  tft.println("con dati Open-Meteo,");
+  tft.setCursor(4, 78);
+  tft.println("adattati a orientamento,");
+  tft.setCursor(4, 88);
+  tft.println("inclinazione e potenza");
+  tft.setCursor(4, 98);
+  tft.println("del tuo impianto.");
 }
 
 // --- PAGINA WEB DASHBOARD ---
@@ -341,6 +391,11 @@ void handleRoot() {
 
 // --- PAGINA PRESENTAZIONE PRODOTTO ---
 void handleAbout() {
+  // Mostra le informazioni anche sul display LCD fisico per qualche secondo
+  mostraInfoProdottoLCD();
+  mostraInfoLCD = true;
+  timestampInfoLCD = millis();
+
   String html = "<!DOCTYPE html><html><head>";
   html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
   html += "<title>SOLAR32 - Presentazione</title>";
@@ -384,7 +439,7 @@ void handleSetLocation() {
     aggiornaDisplay();
   }
   server.sendHeader("Location", "/");
-  server.send(333, "text/plain", "");
+  server.send(303, "text/plain", "");
 }
 
 void handleResetWiFi() {
@@ -443,11 +498,17 @@ void setup() {
 void loop() {
   server.handleClient();
 
+  // Ripristina il display normale dopo che la schermata "Info Prodotto" è scaduta
+  if (mostraInfoLCD && (millis() - timestampInfoLCD >= durataInfoLCD)) {
+    mostraInfoLCD = false;
+    aggiornaDisplay();
+  }
+
   // Polling automatico ogni 5 minuti
   unsigned long corrente = millis();
   if (corrente - ultimoAggiornamentoMeteo >= intervalloMeteo) {
     ultimoAggiornamentoMeteo = corrente;
     aggiornaDatiSolari();
-    aggiornaDisplay();
+    if (!mostraInfoLCD) aggiornaDisplay();
   }
 }
