@@ -53,11 +53,18 @@ String getOraAttuale() {
 // --- FUNZIONE PER CALCOLARE IL FATTORE DI CONVERSIONE K PERSONALIZZATO ---
 float calcolaFattoreK() {
   float fattoreGeometrico = 0.92;
-  if (orientamento.equalsIgnoreCase("Sud")) fattoreGeometrico = 1.0;
+  if (orientamento.equalsIgnoreCase("Est")) fattoreGeometrico = 0.92;
+  else if (orientamento.equalsIgnoreCase("Sud")) fattoreGeometrico = 1.0;
   else if (orientamento.equalsIgnoreCase("Ovest")) fattoreGeometrico = 0.92;
-  
-  // Moltiplicatore complessivo: kWp * fattore geometrico * Performance Ratio (PR 0.947)
-  return kWpImpianto * fattoreGeometrico * 0.947; 
+
+  // Fattore di inclinazione: penalizza lo scostamento dall'inclinazione ottimale (~30°)
+  const float inclinazioneOttimale = 30.0;
+  float scostamento = inclinazione - inclinazioneOttimale;
+  float fattoreInclinazione = 1.0 - 0.00009 * scostamento * scostamento;
+  if (fattoreInclinazione < 0.5) fattoreInclinazione = 0.5;
+
+  // Moltiplicatore complessivo: kWp * fattore geometrico * fattore inclinazione * Performance Ratio (PR 0.947)
+  return kWpImpianto * fattoreGeometrico * fattoreInclinazione * 0.947;
 }
 
 // --- FUNZIONE PER LEGGERE L'API OPEN-METEO (7 GIORNI) ---
