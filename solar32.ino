@@ -19,10 +19,9 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 WebServer server(80);
 Preferences preferences;
 
-// Server NTP per l'orario italiano
+// Server NTP e fuso orario italiano (passaggio automatico ora legale/solare)
 const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 3600;      // UTC +1 (Italia)
-const int   daylightOffset_sec = 3600; // Ora legale (+1 ora)
+const char* tzItalia = "CET-1CEST,M3.5.0,M10.5.0/3";
 
 // Parametri Impianto & Coordinate predefinite
 String latitude = "43.92";
@@ -78,17 +77,130 @@ int categoriaMeteo(int codice) {
   return 4; // drizzle/pioggia/rovesci: tutti i restanti codici di precipitazione
 }
 
-// --- COLORE DEL PALLINO ACCENTO SU LCD IN BASE ALLA CATEGORIA METEO ---
-// A questa risoluzione non si possono disegnare icone distinte e leggibili,
-// quindi la condizione meteo è codificata a colori invece che a forme.
-uint16_t coloreMeteoLCD(int categoria) {
-  if (categoria == 0) return tft.color565(245, 166, 35);  // sole: ambra
-  if (categoria == 1) return tft.color565(255, 213, 79);  // sole velato: giallo chiaro
-  if (categoria == 2) return tft.color565(144, 164, 174); // nuvoloso: grigio
-  if (categoria == 3) return tft.color565(176, 190, 197); // nebbia: grigio chiaro
-  if (categoria == 5) return tft.color565(79, 195, 247);  // neve: azzurro chiaro
-  if (categoria == 6) return tft.color565(84, 110, 122);  // temporale: grigio scuro
-  return tft.color565(33, 150, 243);                      // pioggia: blu
+// --- DISEGNA UNA GRIGLIA DI PIXEL (13x11) SUL DISPLAY LCD, PIXEL PER PIXEL ---
+// Ogni cella della griglia e' una lettera: S=sole, C=grigio chiaro, G=grigio,
+// A=azzurro, N=nero, .=trasparente (pixel non disegnato, resta lo sfondo).
+void disegnaGrigliaPixel(const char* const righe[11], int x, int y) {
+  for (int r = 0; r < 11; r++) {
+    for (int c = 0; c < 13; c++) {
+      char ch = righe[r][c];
+      uint16_t colore;
+      switch (ch) {
+        case 'S': colore = tft.color565(255, 204, 77);  break;
+        case 'C': colore = tft.color565(204, 214, 221); break;
+        case 'G': colore = tft.color565(153, 170, 181); break;
+        case 'A': colore = tft.color565(85, 172, 238);  break;
+        case 'N': colore = ST7735_BLACK; break;
+        default: continue; // '.' = non disegnare, lascia lo sfondo
+      }
+      tft.drawPixel(x + c, y + r, colore);
+    }
+  }
+}
+
+// --- ICONE METEO PER LCD: griglie 13x11 riprodotte pixel per pixel dalle icone originali ---
+void disegnaIconaMeteoLCD(int categoria, int x, int y) {
+  static const char* const griglioSole[11] = {
+    ".S....S....S.",
+    "..S.......S..",
+    ".....SSS.....",
+    "....SSSSS....",
+    "...SSSSSSS...",
+    "SS.SSSSSSS.SS",
+    "...SSSSSSS...",
+    "....SSSSS....",
+    ".....SSS.....",
+    "..S.......S..",
+    ".S....S....S."
+  };
+  static const char* const griglioSoleVelato[11] = {
+    "........S....",
+    ".....S.....S.",
+    ".......SSS...",
+    "..GGG.SSSSS..",
+    ".GGGGGSSSSS.S",
+    "GGGGGGGSSSS..",
+    "GGGGGGGGGG...",
+    "GGGGGGGGGGGS.",
+    "GGGGGGGGGGG..",
+    ".GGGGGGGGG...",
+    "............."
+  };
+  static const char* const griglioNuvoloso[11] = {
+    ".............",
+    "....GGGG.....",
+    "...GGGGGG....",
+    "..GGGGGGG....",
+    ".GGGGGGGGGG..",
+    ".GGGGGGGGGGG.",
+    ".GGGGGGGGGGG.",
+    ".GGGGGGGGGGG.",
+    "..GGGGGGGGG..",
+    ".............",
+    "............."
+  };
+  static const char* const griglioNebbia[11] = {
+    ".............",
+    "....GGGG.....",
+    ".............",
+    "..GGGGGGG....",
+    ".............",
+    ".GGGGGGGGGGG.",
+    ".............",
+    ".GGGGGGGGGGG.",
+    ".............",
+    "....GGGGGG...",
+    "............."
+  };
+  static const char* const griglioPioggia[11] = {
+    ".............",
+    ".....GGG.....",
+    "...GGGGGG....",
+    "..GGGGGGGGG..",
+    "..GGGGGGGGGG.",
+    "..GGGGGGGGGG.",
+    "...GGGGGGGG..",
+    "....A...A....",
+    "..A.A.A.A.A..",
+    "..A...A...A..",
+    "............."
+  };
+  static const char* const griglioNeve[11] = { // nessuna icona di riferimento fornita: riuso la nuvola con fiocchi al posto della pioggia
+    ".............",
+    "....GGGG.....",
+    "...GGGGGG....",
+    "..GGGGGGG....",
+    ".GGGGGGGGGG..",
+    ".GGGGGGGGGGG.",
+    ".GGGGGGGGGGG.",
+    ".GGGGGGGGGGG.",
+    "..GGGGGGGGG..",
+    ".A...A...A...",
+    "............."
+  };
+  static const char* const griglioTemporale[11] = {
+    ".............",
+    ".....GGG.....",
+    "...GGGGGG....",
+    "..GGGGGSGGG..",
+    ".GGGGGSSGGGG.",
+    ".GGGGSSGGGGG.",
+    "...GGSSSGGG..",
+    ".A....SS.A...",
+    ".A.A.SS..A.A.",
+    "...A.S.....A.",
+    "............."
+  };
+
+  switch (categoria) {
+    case 0: disegnaGrigliaPixel(griglioSole, x, y); break;
+    case 1: disegnaGrigliaPixel(griglioSoleVelato, x, y); break;
+    case 2: disegnaGrigliaPixel(griglioNuvoloso, x, y); break;
+    case 3: disegnaGrigliaPixel(griglioNebbia, x, y); break;
+    case 5: disegnaGrigliaPixel(griglioNeve, x, y); break;
+    case 6: disegnaGrigliaPixel(griglioTemporale, x, y); break;
+    default: disegnaGrigliaPixel(griglioPioggia, x, y); break;
+  }
 }
 
 // --- FUNZIONE PER CALCOLARE IL FATTORE DI CONVERSIONE K PERSONALIZZATO ---
@@ -265,68 +377,70 @@ void aggiornaDisplay() {
 
   tft.drawFastHLine(0, 14, 160, colDivider);
 
-  // 2. DATI GIORNO CORRENTE (due badge circolari: istantaneo e totale oggi, stile "flow")
-  int cxNow = 40, cxOggi = 120, cyCircle = 40, rCircle = 24;
-  tft.fillCircle(cxNow, cyCircle, rCircle, colNowBg);
-  tft.drawCircle(cxNow, cyCircle, rCircle, colNowBorder);
-  tft.fillCircle(cxOggi, cyCircle, rCircle, colOggiBg);
-  tft.drawCircle(cxOggi, cyCircle, rCircle, colOggiBorder);
+  // 2. DATI GIORNO CORRENTE (due card rettangolari a bordi stondati: istantaneo e totale oggi)
+  int cardX1 = 2, cardX2 = 82, cardY = 16, cardW = 76, cardH = 48, cardR = 8;
+  tft.fillRoundRect(cardX1, cardY, cardW, cardH, cardR, colNowBg);
+  tft.drawRoundRect(cardX1, cardY, cardW, cardH, cardR, colNowBorder);
+  tft.fillRoundRect(cardX2, cardY, cardW, cardH, cardR, colOggiBg);
+  tft.drawRoundRect(cardX2, cardY, cardW, cardH, cardR, colOggiBorder);
 
-  // --- CERCHIO SINISTRO: ISTANTANEO (ADESSO) ---
-  // valore+unita' stanno dentro il cerchio; il font del valore si riduce da solo se il testo e' troppo lungo per starci dentro
+  int cxNow = cardX1 + cardW / 2;
+  int cxOggi = cardX2 + cardW / 2;
+
+  // --- CARD SINISTRA: ISTANTANEO ---
+  // Etichetta in alto, dentro il riquadro, in grassetto (nero)
+  String strNowLabel = "Irraggiam.";
+  int xNowLabel = cxNow - (int)(strNowLabel.length() * 3);
+  tft.setCursor(xNowLabel, cardY + 4);
+  tft.setTextColor(ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.print(strNowLabel);
+  tft.setCursor(xNowLabel + 1, cardY + 4);
+  tft.print(strNowLabel);
+
   String strNowVal = String((int)radiazioneIstantanea);
-  int sizeNowVal = (strNowVal.length() <= 3) ? 2 : 1;
+  int sizeNowVal = (strNowVal.length() <= 6) ? 2 : 1;
   int xNowVal = cxNow - (int)(strNowVal.length() * (sizeNowVal == 2 ? 6 : 3));
-  tft.setCursor(xNowVal, cyCircle - 11);
+  tft.setCursor(xNowVal, cardY + 16);
   tft.setTextColor(colNowBorder);
   tft.setTextSize(sizeNowVal);
   tft.print(strNowVal);
 
   String unitNow = "W/m2";
-  tft.setCursor(cxNow - (int)(unitNow.length() * 3), cyCircle + 6);
+  tft.setCursor(cxNow - (int)(unitNow.length() * 3), cardY + 34);
   tft.setTextColor(colNowBorder);
   tft.setTextSize(1);
   tft.print(unitNow);
 
-  // Etichetta in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
-  String strNowLabel = "ADESSO";
-  int xNowLabel = cxNow - (int)(strNowLabel.length() * 3);
-  tft.setCursor(xNowLabel, cyCircle + rCircle + 4);
-  tft.setTextColor(colDayLabelTx);
+  // --- CARD DESTRA: TOTALE OGGI ---
+  // Etichetta in alto, dentro il riquadro, in grassetto (nero)
+  String strOggiLabel = "Prod. oggi";
+  int xOggiLabel = cxOggi - (int)(strOggiLabel.length() * 3);
+  tft.setCursor(xOggiLabel, cardY + 4);
+  tft.setTextColor(ST7735_BLACK);
   tft.setTextSize(1);
-  tft.print(strNowLabel);
-  tft.setCursor(xNowLabel + 1, cyCircle + rCircle + 4);
-  tft.print(strNowLabel);
+  tft.print(strOggiLabel);
+  tft.setCursor(xOggiLabel + 1, cardY + 4);
+  tft.print(strOggiLabel);
 
-  // --- CERCHIO DESTRO: TOTALE OGGI ---
   String strOggiVal = String(previsioni7Giorni[0], 1);
-  int sizeOggiVal = 1;
+  int sizeOggiVal = (strOggiVal.length() <= 6) ? 2 : 1;
   int xOggiVal = cxOggi - (int)(strOggiVal.length() * (sizeOggiVal == 2 ? 6 : 3));
-  tft.setCursor(xOggiVal, cyCircle - 11);
+  tft.setCursor(xOggiVal, cardY + 16);
   tft.setTextColor(colOggiBorder);
   tft.setTextSize(sizeOggiVal);
   tft.print(strOggiVal);
 
   String unitOggi = "kWh";
-  tft.setCursor(cxOggi - (int)(unitOggi.length() * 3), cyCircle + 6);
+  tft.setCursor(cxOggi - (int)(unitOggi.length() * 3), cardY + 34);
   tft.setTextColor(colOggiBorder);
   tft.setTextSize(1);
   tft.print(unitOggi);
 
-  // Etichetta in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
-  String strOggiLabel = "TOT OGGI";
-  int xOggiLabel = cxOggi - (int)(strOggiLabel.length() * 3);
-  tft.setCursor(xOggiLabel, cyCircle + rCircle + 4);
-  tft.setTextColor(colDayLabelTx);
-  tft.setTextSize(1);
-  tft.print(strOggiLabel);
-  tft.setCursor(xOggiLabel + 1, cyCircle + rCircle + 4);
-  tft.print(strOggiLabel);
-
   // 3. PREVISIONI PROSSIMI 6 GIORNI (GRIGLIA 2x3, accento circolare + testo, righe ben distanziate)
-  int startY = 78;
+  int startY = 70;
   int colWidth = 53;
-  int rowHeight = 25;
+  int rowHeight = 27;
 
   for (int i = 1; i <= 6; i++) {
     int idx = i - 1;
@@ -336,14 +450,14 @@ void aggiornaDisplay() {
     int x = col * colWidth + 4;
     int y = startY + (row * rowHeight);
 
-    tft.fillCircle(x + 6, y + 6, 4, coloreMeteoLCD(categoriaMeteo(codiceMeteo[i])));
+    disegnaIconaMeteoLCD(categoriaMeteo(codiceMeteo[i]), x, y);
 
     // Nome giorno in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
-    tft.setCursor(x + 14, y + 2);
+    tft.setCursor(x + 16, y + 2);
     tft.setTextColor(colDayLabelTx);
     tft.setTextSize(1);
     tft.print(nomiGiorni[i]);
-    tft.setCursor(x + 15, y + 2);
+    tft.setCursor(x + 17, y + 2);
     tft.print(nomiGiorni[i]);
 
     tft.setCursor(x + 2, y + 14);
@@ -420,8 +534,8 @@ String logoSvgHtml() {
 // --- ICONE SVG RIUTILIZZABILI PER LO STILE "BADGE CIRCOLARI" (app di monitoraggio) ---
 String sunIconSvg(int size) {
   return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
-         "<circle cx='12' cy='12' r='5' fill='#f5a623'/>"
-         "<g stroke='#f5a623' stroke-width='1.5' stroke-linecap='round'>"
+         "<circle cx='12' cy='12' r='5' fill='#FFCC4D'/>"
+         "<g stroke='#FFCC4D' stroke-width='1.5' stroke-linecap='round'>"
          "<line x1='12' y1='1' x2='12' y2='3'/><line x1='12' y1='21' x2='12' y2='23'/>"
          "<line x1='1' y1='12' x2='3' y2='12'/><line x1='21' y1='12' x2='23' y2='12'/>"
          "<line x1='4.2' y1='4.2' x2='5.6' y2='5.6'/><line x1='18.4' y1='18.4' x2='19.8' y2='19.8'/>"
@@ -431,30 +545,30 @@ String sunIconSvg(int size) {
 
 String cloudSunIconSvg(int size) {
   return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
-         "<circle cx='9' cy='8' r='4' fill='#f5a623'/>"
-         "<g stroke='#f5a623' stroke-width='1.3' stroke-linecap='round'>"
+         "<circle cx='9' cy='8' r='4' fill='#FFCC4D'/>"
+         "<g stroke='#FFCC4D' stroke-width='1.3' stroke-linecap='round'>"
          "<line x1='9' y1='1' x2='9' y2='2.5'/><line x1='2' y1='8' x2='3.5' y2='8'/>"
          "<line x1='3.5' y1='3.5' x2='4.5' y2='4.5'/><line x1='14.5' y1='3.5' x2='13.5' y2='4.5'/>"
          "</g>"
-         "<rect x='6' y='13' width='16' height='7' rx='3.5' fill='#90a4ae'/>"
-         "<circle cx='10' cy='12' r='3.5' fill='#90a4ae'/>"
-         "<circle cx='15' cy='10' r='4.5' fill='#90a4ae'/>"
-         "<circle cx='19' cy='12' r='3.5' fill='#90a4ae'/>"
+         "<rect x='6' y='13' width='16' height='7' rx='3.5' fill='#CCD6DD'/>"
+         "<circle cx='10' cy='12' r='3.5' fill='#CCD6DD'/>"
+         "<circle cx='15' cy='10' r='4.5' fill='#CCD6DD'/>"
+         "<circle cx='19' cy='12' r='3.5' fill='#CCD6DD'/>"
          "</svg>";
 }
 
 String cloudIconSvg(int size) {
   return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
-         "<rect x='3' y='12' width='18' height='8' rx='4' fill='#78909c'/>"
-         "<circle cx='8' cy='11' r='4' fill='#78909c'/>"
-         "<circle cx='14' cy='8' r='5.5' fill='#78909c'/>"
-         "<circle cx='19' cy='11' r='4' fill='#78909c'/>"
+         "<rect x='3' y='12' width='18' height='8' rx='4' fill='#99AAB5'/>"
+         "<circle cx='8' cy='11' r='4' fill='#99AAB5'/>"
+         "<circle cx='14' cy='8' r='5.5' fill='#99AAB5'/>"
+         "<circle cx='19' cy='11' r='4' fill='#99AAB5'/>"
          "</svg>";
 }
 
 String fogIconSvg(int size) {
   return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
-         "<g stroke='#90a4ae' stroke-width='2' stroke-linecap='round'>"
+         "<g stroke='#CCD6DD' stroke-width='2' stroke-linecap='round'>"
          "<line x1='3' y1='7' x2='21' y2='7'/>"
          "<line x1='3' y1='12' x2='21' y2='12'/>"
          "<line x1='3' y1='17' x2='21' y2='17'/>"
@@ -463,11 +577,11 @@ String fogIconSvg(int size) {
 
 String rainIconSvg(int size) {
   return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
-         "<rect x='3' y='6' width='18' height='7' rx='3.5' fill='#78909c'/>"
-         "<circle cx='8' cy='5' r='3.5' fill='#78909c'/>"
-         "<circle cx='14' cy='3' r='5' fill='#78909c'/>"
-         "<circle cx='19' cy='5' r='3.5' fill='#78909c'/>"
-         "<g stroke='#2196f3' stroke-width='2' stroke-linecap='round'>"
+         "<rect x='3' y='6' width='18' height='7' rx='3.5' fill='#99AAB5'/>"
+         "<circle cx='8' cy='5' r='3.5' fill='#99AAB5'/>"
+         "<circle cx='14' cy='3' r='5' fill='#99AAB5'/>"
+         "<circle cx='19' cy='5' r='3.5' fill='#99AAB5'/>"
+         "<g stroke='#55ACEE' stroke-width='2' stroke-linecap='round'>"
          "<line x1='8' y1='16' x2='7' y2='20'/>"
          "<line x1='13' y1='16' x2='12' y2='20'/>"
          "<line x1='18' y1='16' x2='17' y2='20'/>"
@@ -476,22 +590,24 @@ String rainIconSvg(int size) {
 
 String snowIconSvg(int size) {
   return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
-         "<rect x='3' y='6' width='18' height='7' rx='3.5' fill='#90a4ae'/>"
-         "<circle cx='8' cy='5' r='3.5' fill='#90a4ae'/>"
-         "<circle cx='14' cy='3' r='5' fill='#90a4ae'/>"
-         "<circle cx='19' cy='5' r='3.5' fill='#90a4ae'/>"
-         "<g fill='#4fc3f7'>"
+         "<rect x='3' y='6' width='18' height='7' rx='3.5' fill='#99AAB5'/>"
+         "<circle cx='8' cy='5' r='3.5' fill='#99AAB5'/>"
+         "<circle cx='14' cy='3' r='5' fill='#99AAB5'/>"
+         "<circle cx='19' cy='5' r='3.5' fill='#99AAB5'/>"
+         "<g fill='#55ACEE'>"
          "<circle cx='8' cy='18' r='1.4'/><circle cx='13' cy='19' r='1.4'/><circle cx='18' cy='18' r='1.4'/>"
          "</g></svg>";
 }
 
 String stormIconSvg(int size) {
   return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
-         "<rect x='3' y='4' width='18' height='7' rx='3.5' fill='#546e7a'/>"
-         "<circle cx='8' cy='3' r='3.5' fill='#546e7a'/>"
-         "<circle cx='14' cy='1.5' r='5' fill='#546e7a'/>"
-         "<circle cx='19' cy='3' r='3.5' fill='#546e7a'/>"
-         "<polygon points='13,12 8,19 11,19 9,23 16,15 12,15' fill='#fbc02d'/>"
+         "<rect x='3' y='4' width='18' height='7' rx='3.5' fill='#99AAB5'/>"
+         "<circle cx='8' cy='3' r='3.5' fill='#99AAB5'/>"
+         "<circle cx='14' cy='1.5' r='5' fill='#99AAB5'/>"
+         "<circle cx='19' cy='3' r='3.5' fill='#99AAB5'/>"
+         "<polygon points='12,12 7,19 10,19 8,23 14,16 11,16' fill='#FFCC4D'/>"
+         "<circle cx='18' cy='20' r='2' fill='#55ACEE'/>"
+         "<polygon points='18,14 15,20 21,20' fill='#55ACEE'/>"
          "</svg>";
 }
 
@@ -733,8 +849,8 @@ void setup() {
     ESP.restart();
   }
 
-  // Sincronizzazione Orologio via NTP
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  // Sincronizzazione Orologio via NTP (con cambio automatico ora legale/solare)
+  configTzTime(tzItalia, ntpServer);
 
   // Configurazione Server Web
   server.on("/", handleRoot);
