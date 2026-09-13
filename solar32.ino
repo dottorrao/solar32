@@ -389,7 +389,7 @@ void aggiornaDisplay() {
 
   // --- CARD SINISTRA: ISTANTANEO ---
   // Etichetta in alto, dentro il riquadro, in grassetto (nero)
-  String strNowLabel = "Irraggiam.";
+  String strNowLabel = "Irradianza";
   int xNowLabel = cxNow - (int)(strNowLabel.length() * 3);
   tft.setCursor(xNowLabel, cardY + 4);
   tft.setTextColor(ST7735_BLACK);
@@ -414,7 +414,7 @@ void aggiornaDisplay() {
 
   // --- CARD DESTRA: TOTALE OGGI ---
   // Etichetta in alto, dentro il riquadro, in grassetto (nero)
-  String strOggiLabel = "Prod. oggi";
+  String strOggiLabel = "Produzione";
   int xOggiLabel = cxOggi - (int)(strOggiLabel.length() * 3);
   tft.setCursor(xOggiLabel, cardY + 4);
   tft.setTextColor(ST7735_BLACK);
