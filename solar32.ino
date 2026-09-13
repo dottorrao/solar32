@@ -35,6 +35,7 @@ int    inclinazione = 30;
 float radiazioneIstantanea = 0.0;
 float previsioni7Giorni[7]; // Valori in kWh totali stimati per la giornata
 String nomiGiorni[7];        // Nomi brevi dei giorni (es. Dom, Lun...)
+int codiceMeteo[7];          // Codice condizione meteo WMO di Open-Meteo per ogni giorno
 
 unsigned long ultimoAggiornamentoMeteo = 0;
 const unsigned long intervalloMeteo = 300000; // Aggiorna ogni 5 minuti
@@ -65,6 +66,31 @@ float calcolaAzimuth() {
   return azimuth;
 }
 
+// --- MAPPA IL CODICE METEO WMO DI OPEN-METEO IN UNA CATEGORIA PER LE ICONE ---
+// 0=Sole, 1=Sole velato, 2=Nuvoloso, 3=Nebbia, 4=Pioggia, 5=Neve, 6=Temporale
+int categoriaMeteo(int codice) {
+  if (codice == 0) return 0;
+  if (codice == 1 || codice == 2) return 1;
+  if (codice == 3) return 2;
+  if (codice == 45 || codice == 48) return 3;
+  if (codice == 71 || codice == 73 || codice == 75 || codice == 77 || codice == 85 || codice == 86) return 5;
+  if (codice == 95 || codice == 96 || codice == 99) return 6;
+  return 4; // drizzle/pioggia/rovesci: tutti i restanti codici di precipitazione
+}
+
+// --- COLORE DEL PALLINO ACCENTO SU LCD IN BASE ALLA CATEGORIA METEO ---
+// A questa risoluzione non si possono disegnare icone distinte e leggibili,
+// quindi la condizione meteo è codificata a colori invece che a forme.
+uint16_t coloreMeteoLCD(int categoria) {
+  if (categoria == 0) return tft.color565(245, 166, 35);  // sole: ambra
+  if (categoria == 1) return tft.color565(255, 213, 79);  // sole velato: giallo chiaro
+  if (categoria == 2) return tft.color565(144, 164, 174); // nuvoloso: grigio
+  if (categoria == 3) return tft.color565(176, 190, 197); // nebbia: grigio chiaro
+  if (categoria == 5) return tft.color565(79, 195, 247);  // neve: azzurro chiaro
+  if (categoria == 6) return tft.color565(84, 110, 122);  // temporale: grigio scuro
+  return tft.color565(33, 150, 243);                      // pioggia: blu
+}
+
 // --- FUNZIONE PER CALCOLARE IL FATTORE DI CONVERSIONE K PERSONALIZZATO ---
 // Orientamento e inclinazione sono già considerati da Open-Meteo tramite i
 // parametri tilt/azimuth (vedi aggiornaDatiSolari): qui restano solo le
@@ -83,6 +109,7 @@ void aggiornaDatiSolari() {
                  "&longitude=" + longitude +
                  "&current=global_tilted_irradiance_instant" +
                  "&hourly=global_tilted_irradiance" +
+                 "&daily=weather_code" +
                  "&tilt=" + String(inclinazione) +
                  "&azimuth=" + String(calcolaAzimuth(), 0) +
                  "&forecast_days=7&timezone=auto";
@@ -122,6 +149,7 @@ void aggiornaDatiSolari() {
           previsioni7Giorni[i] = radiazioneKWhm2 * fattoreK;
 
           nomiGiorni[i] = giorniBrevi[(giornoSettimanaOggi + i) % 7];
+          codiceMeteo[i] = doc["daily"]["weather_code"][i];
         }
         Serial.println("Dati meteo e stime produzione aggiornati!");
       }
@@ -219,7 +247,6 @@ void aggiornaDisplay() {
   uint16_t colOggiBorder= tft.color565(1, 87, 155);    // bordo OGGI: azzurro scuro
   uint16_t colDayLabelTx= tft.color565(33, 33, 33);    // nomi giorno: scuro, leggibile sul bianco
   uint16_t colDayValueTx= tft.color565(0, 137, 123);   // valori kWh: teal acceso, leggibile sul bianco
-  uint16_t colDayAccent = tft.color565(245, 166, 35);  // pallino accento (stesso ambra del logo sole)
 
   tft.fillScreen(colBg);
 
@@ -309,7 +336,7 @@ void aggiornaDisplay() {
     int x = col * colWidth + 4;
     int y = startY + (row * rowHeight);
 
-    tft.fillCircle(x + 6, y + 6, 4, colDayAccent);
+    tft.fillCircle(x + 6, y + 6, 4, coloreMeteoLCD(categoriaMeteo(codiceMeteo[i])));
 
     // Nome giorno in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
     tft.setCursor(x + 14, y + 2);
@@ -400,6 +427,83 @@ String sunIconSvg(int size) {
          "<line x1='4.2' y1='4.2' x2='5.6' y2='5.6'/><line x1='18.4' y1='18.4' x2='19.8' y2='19.8'/>"
          "<line x1='4.2' y1='19.8' x2='5.6' y2='18.4'/><line x1='18.4' y1='5.6' x2='19.8' y2='4.2'/>"
          "</g></svg>";
+}
+
+String cloudSunIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<circle cx='9' cy='8' r='4' fill='#f5a623'/>"
+         "<g stroke='#f5a623' stroke-width='1.3' stroke-linecap='round'>"
+         "<line x1='9' y1='1' x2='9' y2='2.5'/><line x1='2' y1='8' x2='3.5' y2='8'/>"
+         "<line x1='3.5' y1='3.5' x2='4.5' y2='4.5'/><line x1='14.5' y1='3.5' x2='13.5' y2='4.5'/>"
+         "</g>"
+         "<rect x='6' y='13' width='16' height='7' rx='3.5' fill='#90a4ae'/>"
+         "<circle cx='10' cy='12' r='3.5' fill='#90a4ae'/>"
+         "<circle cx='15' cy='10' r='4.5' fill='#90a4ae'/>"
+         "<circle cx='19' cy='12' r='3.5' fill='#90a4ae'/>"
+         "</svg>";
+}
+
+String cloudIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<rect x='3' y='12' width='18' height='8' rx='4' fill='#78909c'/>"
+         "<circle cx='8' cy='11' r='4' fill='#78909c'/>"
+         "<circle cx='14' cy='8' r='5.5' fill='#78909c'/>"
+         "<circle cx='19' cy='11' r='4' fill='#78909c'/>"
+         "</svg>";
+}
+
+String fogIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<g stroke='#90a4ae' stroke-width='2' stroke-linecap='round'>"
+         "<line x1='3' y1='7' x2='21' y2='7'/>"
+         "<line x1='3' y1='12' x2='21' y2='12'/>"
+         "<line x1='3' y1='17' x2='21' y2='17'/>"
+         "</g></svg>";
+}
+
+String rainIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<rect x='3' y='6' width='18' height='7' rx='3.5' fill='#78909c'/>"
+         "<circle cx='8' cy='5' r='3.5' fill='#78909c'/>"
+         "<circle cx='14' cy='3' r='5' fill='#78909c'/>"
+         "<circle cx='19' cy='5' r='3.5' fill='#78909c'/>"
+         "<g stroke='#2196f3' stroke-width='2' stroke-linecap='round'>"
+         "<line x1='8' y1='16' x2='7' y2='20'/>"
+         "<line x1='13' y1='16' x2='12' y2='20'/>"
+         "<line x1='18' y1='16' x2='17' y2='20'/>"
+         "</g></svg>";
+}
+
+String snowIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<rect x='3' y='6' width='18' height='7' rx='3.5' fill='#90a4ae'/>"
+         "<circle cx='8' cy='5' r='3.5' fill='#90a4ae'/>"
+         "<circle cx='14' cy='3' r='5' fill='#90a4ae'/>"
+         "<circle cx='19' cy='5' r='3.5' fill='#90a4ae'/>"
+         "<g fill='#4fc3f7'>"
+         "<circle cx='8' cy='18' r='1.4'/><circle cx='13' cy='19' r='1.4'/><circle cx='18' cy='18' r='1.4'/>"
+         "</g></svg>";
+}
+
+String stormIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<rect x='3' y='4' width='18' height='7' rx='3.5' fill='#546e7a'/>"
+         "<circle cx='8' cy='3' r='3.5' fill='#546e7a'/>"
+         "<circle cx='14' cy='1.5' r='5' fill='#546e7a'/>"
+         "<circle cx='19' cy='3' r='3.5' fill='#546e7a'/>"
+         "<polygon points='13,12 8,19 11,19 9,23 16,15 12,15' fill='#fbc02d'/>"
+         "</svg>";
+}
+
+// --- SELEZIONA L'ICONA METEO GIUSTA IN BASE ALLA CATEGORIA (vedi categoriaMeteo) ---
+String weatherIconSvg(int categoria, int size) {
+  if (categoria == 0) return sunIconSvg(size);
+  if (categoria == 1) return cloudSunIconSvg(size);
+  if (categoria == 2) return cloudIconSvg(size);
+  if (categoria == 3) return fogIconSvg(size);
+  if (categoria == 5) return snowIconSvg(size);
+  if (categoria == 6) return stormIconSvg(size);
+  return rainIconSvg(size); // categoria 4
 }
 
 String chartIconSvg(int size) {
@@ -495,7 +599,7 @@ void handleRoot() {
   html += "<p style='font-size:13px; font-weight:bold; color:#666; margin:0 0 10px;'>Prossimi giorni</p>";
   html += "<div class='day-grid-app'>";
   for (int i = 1; i <= 6; i++) {
-    html += "<div class='day-item'><div class='day-icon'>" + sunIconSvg(16) + "</div><p style='font-size:12px; font-weight:bold; margin:0;'>" + nomiGiorni[i] + "</p><p style='font-size:12px; color:#666; margin:0;'>" + String(previsioni7Giorni[i], 1) + " kWh</p></div>";
+    html += "<div class='day-item'><div class='day-icon'>" + weatherIconSvg(categoriaMeteo(codiceMeteo[i]), 16) + "</div><p style='font-size:12px; font-weight:bold; margin:0;'>" + nomiGiorni[i] + "</p><p style='font-size:12px; color:#666; margin:0;'>" + String(previsioni7Giorni[i], 1) + " kWh</p></div>";
   }
   html += "</div>";
 
