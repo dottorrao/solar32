@@ -146,19 +146,20 @@ void configModeCallback(WiFiManager *myWiFiManager) {
 
 // --- RENDERING SCHERMO TFT CON GRIGLIA (stile card, coerente con la dashboard web) ---
 void aggiornaDisplay() {
-  uint16_t colBg        = tft.color565(18, 18, 18);    // sfondo nero carbone (#121212)
-  uint16_t colTopBarTx  = tft.color565(120, 144, 156); // ora/IP: grigio ardesia neutro (#78909C)
-  uint16_t colNowBg     = tft.color565(129, 199, 132); // box NOW: verde salvia (#81C784)
-  uint16_t colOggiBg    = tft.color565(100, 181, 246); // box OGGI TOT: azzurro polvere (#64B5F6)
-  uint16_t colLightBoxTx= tft.color565(33, 33, 33);    // testo scuro leggibile sulle card chiare
-  uint16_t colDayBg     = tft.color565(30, 41, 59);    // box giorni: grigio scuro opaco (#1E293B)
-  uint16_t colDayLabelTx= tft.color565(176, 190, 197); // etichette grigio chiaro sui box giorni
-  uint16_t colDayValueTx= tft.color565(253, 224, 71);  // valori kWh in giallo tenue (#FDE047)
-  uint16_t colDayBorder = tft.color565(60, 70, 80);    // bordo sottile per separare i box giorni dal nero
+  uint16_t colBg        = ST7735_WHITE;                // sfondo bianco
+  uint16_t colTopBarTx  = tft.color565(33, 33, 33);    // ora/IP: testo scuro leggibile sul bianco
+  uint16_t colDivider   = tft.color565(224, 224, 224); // linea separatrice, grigio chiaro
+  uint16_t colNowBg     = tft.color565(255, 241, 118); // cerchio NOW: giallo chiaro
+  uint16_t colNowBorder = tft.color565(184, 134, 11);  // bordo NOW: giallo scuro
+  uint16_t colOggiBg    = tft.color565(179, 229, 252); // cerchio OGGI: celeste chiaro
+  uint16_t colOggiBorder= tft.color565(1, 87, 155);    // bordo OGGI: azzurro scuro
+  uint16_t colDayLabelTx= tft.color565(33, 33, 33);    // nomi giorno: scuro, leggibile sul bianco
+  uint16_t colDayValueTx= tft.color565(0, 137, 123);   // valori kWh: teal acceso, leggibile sul bianco
+  uint16_t colDayAccent = tft.color565(245, 166, 35);  // pallino accento (stesso ambra del logo sole)
 
   tft.fillScreen(colBg);
 
-  // 1. RIGA SUPERIORE: ORA E IP (testo neutro, informazioni di servizio in secondo piano)
+  // 1. RIGA SUPERIORE: ORA E IP
   tft.setCursor(4, 4);
   tft.setTextColor(colTopBarTx);
   tft.setTextSize(1);
@@ -171,85 +172,93 @@ void aggiornaDisplay() {
   tft.setTextColor(colTopBarTx);
   tft.print(ipStr);
 
-  tft.drawFastHLine(0, 14, 160, colTopBarTx);
+  tft.drawFastHLine(0, 14, 160, colDivider);
 
-  // 2. DATI GIORNO CORRENTE (due card affiancate: istantaneo e totale oggi)
-  tft.fillRoundRect(2, 16, 76, 38, 5, colNowBg);
-  tft.fillRoundRect(82, 16, 76, 38, 5, colOggiBg);
+  // 2. DATI GIORNO CORRENTE (due badge circolari: istantaneo e totale oggi, stile "flow")
+  int cxNow = 40, cxOggi = 120, cyCircle = 40, rCircle = 24;
+  tft.fillCircle(cxNow, cyCircle, rCircle, colNowBg);
+  tft.drawCircle(cxNow, cyCircle, rCircle, colNowBorder);
+  tft.fillCircle(cxOggi, cyCircle, rCircle, colOggiBg);
+  tft.drawCircle(cxOggi, cyCircle, rCircle, colOggiBorder);
 
-  // --- CARD SINISTRA: ISTANTANEO (NOW) ---
-  String strNowTitle = "NOW";
-  int xNowTitle = 2 + (76 - (int)(strNowTitle.length() * 6)) / 2;
-  tft.setCursor(xNowTitle, 19);
-  tft.setTextColor(colLightBoxTx);
-  tft.setTextSize(1);
-  tft.print(strNowTitle);
-
+  // --- CERCHIO SINISTRO: ISTANTANEO (ADESSO) ---
+  // valore+unita' stanno dentro il cerchio; il font del valore si riduce da solo se il testo e' troppo lungo per starci dentro
   String strNowVal = String((int)radiazioneIstantanea);
-  int xNowVal = 2 + (76 - (int)(strNowVal.length() * 12)) / 2;
-  tft.setCursor(xNowVal, 28);
-  tft.setTextColor(colLightBoxTx);
-  tft.setTextSize(2);
+  int sizeNowVal = (strNowVal.length() <= 3) ? 2 : 1;
+  int xNowVal = cxNow - (int)(strNowVal.length() * (sizeNowVal == 2 ? 6 : 3));
+  tft.setCursor(xNowVal, cyCircle - 11);
+  tft.setTextColor(colNowBorder);
+  tft.setTextSize(sizeNowVal);
   tft.print(strNowVal);
 
-  String strNowUnit = "W/m2";
-  int xNowUnit = 2 + (76 - (int)(strNowUnit.length() * 6)) / 2;
-  tft.setCursor(xNowUnit, 45);
+  String unitNow = "W/m2";
+  tft.setCursor(cxNow - (int)(unitNow.length() * 3), cyCircle + 6);
+  tft.setTextColor(colNowBorder);
   tft.setTextSize(1);
-  tft.setTextColor(colLightBoxTx);
-  tft.print(strNowUnit);
+  tft.print(unitNow);
 
-  // --- CARD DESTRA: TOTALE OGGI ---
-  String strOggiTitle = "OGGI TOT";
-  int xOggiTitle = 82 + (76 - (int)(strOggiTitle.length() * 6)) / 2;
-  tft.setCursor(xOggiTitle, 19);
-  tft.setTextColor(colLightBoxTx);
+  // Etichetta in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
+  String strNowLabel = "ADESSO";
+  int xNowLabel = cxNow - (int)(strNowLabel.length() * 3);
+  tft.setCursor(xNowLabel, cyCircle + rCircle + 4);
+  tft.setTextColor(colDayLabelTx);
   tft.setTextSize(1);
-  tft.print(strOggiTitle);
+  tft.print(strNowLabel);
+  tft.setCursor(xNowLabel + 1, cyCircle + rCircle + 4);
+  tft.print(strNowLabel);
 
+  // --- CERCHIO DESTRO: TOTALE OGGI ---
   String strOggiVal = String(previsioni7Giorni[0], 1);
-  int xOggiVal = 82 + (76 - (int)(strOggiVal.length() * 12)) / 2;
-  tft.setCursor(xOggiVal, 28);
-  tft.setTextColor(colLightBoxTx);
-  tft.setTextSize(2);
+  int sizeOggiVal = 1;
+  int xOggiVal = cxOggi - (int)(strOggiVal.length() * (sizeOggiVal == 2 ? 6 : 3));
+  tft.setCursor(xOggiVal, cyCircle - 11);
+  tft.setTextColor(colOggiBorder);
+  tft.setTextSize(sizeOggiVal);
   tft.print(strOggiVal);
 
-  String strOggiUnit = "kWh";
-  int xOggiUnit = 82 + (76 - (int)(strOggiUnit.length() * 6)) / 2;
-  tft.setCursor(xOggiUnit, 45);
+  String unitOggi = "kWh";
+  tft.setCursor(cxOggi - (int)(unitOggi.length() * 3), cyCircle + 6);
+  tft.setTextColor(colOggiBorder);
   tft.setTextSize(1);
-  tft.setTextColor(colLightBoxTx);
-  tft.print(strOggiUnit);
+  tft.print(unitOggi);
 
-  // 3. PREVISIONI PROSSIMI 6 GIORNI IN kWh TOTALI (GRIGLIA 2x3)
-  int startY = 57;
+  // Etichetta in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
+  String strOggiLabel = "TOT OGGI";
+  int xOggiLabel = cxOggi - (int)(strOggiLabel.length() * 3);
+  tft.setCursor(xOggiLabel, cyCircle + rCircle + 4);
+  tft.setTextColor(colDayLabelTx);
+  tft.setTextSize(1);
+  tft.print(strOggiLabel);
+  tft.setCursor(xOggiLabel + 1, cyCircle + rCircle + 4);
+  tft.print(strOggiLabel);
+
+  // 3. PREVISIONI PROSSIMI 6 GIORNI (GRIGLIA 2x3, accento circolare + testo, righe ben distanziate)
+  int startY = 78;
   int colWidth = 53;
-  int rowHeight = 33;
+  int rowHeight = 25;
 
   for (int i = 1; i <= 6; i++) {
     int idx = i - 1;
     int col = idx % 3;
     int row = idx / 3;
 
-    int x = col * colWidth + 2;
+    int x = col * colWidth + 4;
     int y = startY + (row * rowHeight);
 
-    tft.fillRoundRect(x, y, colWidth - 4, rowHeight - 4, 4, colDayBg);
-    tft.drawRoundRect(x, y, colWidth - 4, rowHeight - 4, 4, colDayBorder);
+    tft.fillCircle(x + 6, y + 6, 4, colDayAccent);
 
     // Nome giorno in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
-    tft.setCursor(x + 4, y + 3);
+    tft.setCursor(x + 14, y + 2);
     tft.setTextColor(colDayLabelTx);
     tft.setTextSize(1);
     tft.print(nomiGiorni[i]);
-    tft.setCursor(x + 5, y + 3);
+    tft.setCursor(x + 15, y + 2);
     tft.print(nomiGiorni[i]);
 
-    tft.setCursor(x + 4, y + 13);
+    tft.setCursor(x + 2, y + 14);
     tft.setTextColor(colDayValueTx);
     tft.setTextSize(1);
     tft.print(previsioni7Giorni[i], 1);
-    tft.setTextColor(colDayLabelTx);
     tft.print("kWh");
   }
 }
@@ -321,6 +330,34 @@ String logoSvgHtml() {
          "</svg>";
 }
 
+// --- ICONE SVG RIUTILIZZABILI PER LO STILE "BADGE CIRCOLARI" (app di monitoraggio) ---
+String sunIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<circle cx='12' cy='12' r='5' fill='#f5a623'/>"
+         "<g stroke='#f5a623' stroke-width='1.5' stroke-linecap='round'>"
+         "<line x1='12' y1='1' x2='12' y2='3'/><line x1='12' y1='21' x2='12' y2='23'/>"
+         "<line x1='1' y1='12' x2='3' y2='12'/><line x1='21' y1='12' x2='23' y2='12'/>"
+         "<line x1='4.2' y1='4.2' x2='5.6' y2='5.6'/><line x1='18.4' y1='18.4' x2='19.8' y2='19.8'/>"
+         "<line x1='4.2' y1='19.8' x2='5.6' y2='18.4'/><line x1='18.4' y1='5.6' x2='19.8' y2='4.2'/>"
+         "</g></svg>";
+}
+
+String chartIconSvg(int size) {
+  return "<svg width='" + String(size) + "' height='" + String(size) + "' viewBox='0 0 24 24'>"
+         "<rect x='4' y='12' width='4' height='9' rx='1' fill='#1976d2'/>"
+         "<rect x='10' y='7' width='4' height='14' rx='1' fill='#1976d2'/>"
+         "<rect x='16' y='3' width='4' height='18' rx='1' fill='#1976d2'/>"
+         "</svg>";
+}
+
+String checkIconSvg() {
+  return "<svg width='16' height='16' viewBox='0 0 24 24'><path d='M5 13l4 4L19 7' stroke='#2e7d32' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>";
+}
+
+String clockIconSvg() {
+  return "<svg width='16' height='16' viewBox='0 0 24 24'><circle cx='12' cy='12' r='9' stroke='#666' stroke-width='2' fill='none'/><path d='M12 7v5l3 3' stroke='#666' stroke-width='2' fill='none' stroke-linecap='round'/></svg>";
+}
+
 // --- PAGINA WEB DASHBOARD ---
 void handleRoot() {
   String html = "<!DOCTYPE html><html><head>";
@@ -340,12 +377,18 @@ void handleRoot() {
   html += ".section.active { display: block; }";
   html += "h2 { margin-top:0; }";
   html += ".card-block { background: white; padding: 16px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }";
-  html += ".flex-container { display: flex; justify-content: space-between; gap: 10px; margin: 5px 0; }";
-  html += ".box-val { background: #f1f8e9; padding: 12px; border-radius: 8px; width: 50%; text-align:center; }";
-  html += ".val { font-size: 26px; color: #2e7d32; font-weight: bold; margin-top: 5px; }";
-  html += ".val-tot { font-size: 26px; color: #0277bd; font-weight: bold; margin-top: 5px; }";
-  html += ".grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }";
-  html += ".day-box { background: #f0f4c3; padding: 10px; border-radius: 8px; font-size: 14px; text-align:center; }";
+  html += ".status-pill { display:flex; align-items:center; gap:6px; background:#e8f5e9; color:#2e7d32; font-size:13px; font-weight:bold; padding:6px 12px; border-radius:999px; width:fit-content; margin-bottom:15px; }";
+  html += ".flow-row { display:flex; justify-content:center; gap:24px; margin-bottom:15px; }";
+  html += ".flow-col { display:flex; flex-direction:column; align-items:center; gap:8px; }";
+  html += ".flow-circle { width:88px; height:88px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; }";
+  html += ".flow-circle.amber { background:#fff3e0; }";
+  html += ".flow-circle.blue { background:#e3f2fd; }";
+  html += ".flow-val { font-size:18px; font-weight:bold; margin-top:2px; }";
+  html += ".flow-label { font-size:12px; color:#666; }";
+  html += ".day-grid-app { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:15px; }";
+  html += ".day-item { background:white; border-radius:8px; padding:10px 6px; text-align:center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }";
+  html += ".day-icon { width:34px; height:34px; border-radius:50%; background:#fff3e0; display:flex; align-items:center; justify-content:center; margin:0 auto 6px; }";
+  html += ".update-row { display:flex; align-items:center; gap:8px; background:white; border-radius:8px; padding:10px 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }";
   html += "label { display:block; font-size: 13px; color:#555; margin-top:10px; }";
   html += "input[type=text], select { width: 100%; padding: 8px; margin-top:4px; border: 1px solid #ccc; border-radius: 6px; }";
   html += "button.submit { background: #00897b; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 16px; width:100%; }";
@@ -371,22 +414,24 @@ void handleRoot() {
 
   html += "<div class='content'>";
 
-  // SEZIONE 1: MONITORAGGIO (dati istantanei e previsioni)
+  // SEZIONE 1: MONITORAGGIO (dati istantanei e previsioni, stile badge circolari)
   html += "<section id='monitor' class='section active'>";
   html += "<h2>Monitor & Previsioni</h2>";
-  html += "<p style='margin:0 0 10px; color:#666;'>Ora locale: <b>" + getOraAttuale() + "</b></p>";
-  html += "<div class='card-block'>";
-  html += "<div class='flex-container'>";
-  html += "<div class='box-val'><div style='font-size:12px; color:#555;'>Istantaneo</div><div class='val'>" + String((int)radiazioneIstantanea) + " W/m&sup2;</div></div>";
-  html += "<div class='box-val'><div style='font-size:12px; color:#555;'>Previsto Oggi</div><div class='val-tot'>" + String(previsioni7Giorni[0], 1) + " kWh</div></div>";
-  html += "</div></div>";
-  html += "<div class='card-block'>";
-  html += "<h3 style='margin-top:0;'>Prossimi Giorni (kWh)</h3>";
-  html += "<div class='grid'>";
+  html += "<div class='status-pill'>" + checkIconSvg() + "Dati aggiornati</div>";
+
+  html += "<div class='flow-row'>";
+  html += "<div class='flow-col'><div class='flow-circle amber'>" + sunIconSvg(22) + "<div class='flow-val' style='color:#e65100;'>" + String((int)radiazioneIstantanea) + "</div></div><div class='flow-label'>Istantaneo, W/m&sup2;</div></div>";
+  html += "<div class='flow-col'><div class='flow-circle blue'>" + chartIconSvg(22) + "<div class='flow-val' style='color:#1565c0;'>" + String(previsioni7Giorni[0], 1) + "</div></div><div class='flow-label'>Previsto oggi, kWh</div></div>";
+  html += "</div>";
+
+  html += "<p style='font-size:13px; font-weight:bold; color:#666; margin:0 0 10px;'>Prossimi giorni</p>";
+  html += "<div class='day-grid-app'>";
   for (int i = 1; i <= 6; i++) {
-    html += "<div class='day-box'><b>" + nomiGiorni[i] + "</b><br>" + String(previsioni7Giorni[i], 1) + " kWh</div>";
+    html += "<div class='day-item'><div class='day-icon'>" + sunIconSvg(16) + "</div><p style='font-size:12px; font-weight:bold; margin:0;'>" + nomiGiorni[i] + "</p><p style='font-size:12px; color:#666; margin:0;'>" + String(previsioni7Giorni[i], 1) + " kWh</p></div>";
   }
-  html += "</div></div>";
+  html += "</div>";
+
+  html += "<div class='update-row'>" + clockIconSvg() + "<div><p style='font-size:11px; color:#999; margin:0;'>Ultimo aggiornamento</p><p style='font-size:13px; font-weight:bold; margin:0;'>Oggi, " + getOraAttuale() + "</p></div></div>";
   html += "</section>";
 
   // SEZIONE 2: IMPOSTAZIONI (configurazione impianto e azioni)
