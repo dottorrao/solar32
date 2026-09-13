@@ -132,16 +132,80 @@ void aggiornaDatiSolari() {
 
 // --- CALLBACK PER CONFIGURAZIONE WIFI ---
 void configModeCallback(WiFiManager *myWiFiManager) {
-  tft.fillScreen(ST7735_BLUE);
-  tft.setCursor(5, 10);
-  tft.setTextColor(ST7735_YELLOW);
+  tft.fillScreen(ST7735_WHITE);
+
+  // Logo: la "o" di "Solar32" sostituita da un'icona sole (stesso logo delle altre schermate)
+  tft.setCursor(4, 6);
+  tft.setTextColor(ST7735_BLACK);
+  tft.setTextSize(2);
+  tft.print("S");
+
+  int cx = 28, cy = 14, r = 7;
+  tft.fillCircle(cx, cy, r, ST7735_YELLOW);
+  for (int a = 0; a < 360; a += 45) {
+    float rad = a * 3.14159 / 180.0;
+    int x1 = cx + (r + 2) * cos(rad);
+    int y1 = cy + (r + 2) * sin(rad);
+    int x2 = cx + (r + 6) * cos(rad);
+    int y2 = cy + (r + 6) * sin(rad);
+    tft.drawLine(x1, y1, x2, y2, ST7735_YELLOW);
+  }
+
+  tft.setCursor(42, 6);
+  tft.setTextColor(ST7735_BLACK);
+  tft.setTextSize(2);
+  tft.println("lar32");
+
+  tft.drawFastHLine(0, 32, 160, tft.color565(224, 224, 224));
+
   tft.setTextSize(1);
-  tft.println("--- CONFIG WIFI ---");
-  tft.setCursor(5, 30);
-  tft.setTextColor(ST7735_WHITE);
+  tft.setCursor(4, 42);
+  tft.setTextColor(tft.color565(33, 33, 33));
+  tft.println("Configurazione Wi-Fi");
+
+  tft.setCursor(4, 58);
+  tft.setTextColor(tft.color565(33, 33, 33));
   tft.println("Connettiti alla rete:");
-  tft.setTextColor(ST7735_GREEN);
-  tft.println("ESP32-Control-AP");
+
+  tft.setCursor(4, 72);
+  tft.setTextColor(tft.color565(1, 87, 155));
+  tft.println("Solar32-AP");
+}
+
+// --- STILE E LOGO PERSONALIZZATI PER LE PAGINE WEB DI WIFIMANAGER ---
+// WiFiManager non permette di ridisegnare il layout delle sue pagine, ma
+// setCustomHeadElement() consente di iniettare CSS/JS per adattarne i colori
+// e aggiungere il nostro logo, senza modificare la libreria.
+String wifiManagerCustomHtml() {
+  return "<style>"
+         "body { background:#eceff1 !important; font-family:Arial,sans-serif !important; }"
+         "button, input[type=submit] { background:#00897b !important; color:white !important; border:none !important; border-radius:6px !important; }"
+         "h1, h2 { color:#00897b !important; }"
+         "a { color:#00897b !important; }"
+         "</style>"
+         "<script>"
+         "document.addEventListener('DOMContentLoaded', function() {"
+         "var el = document.createElement('div');"
+         "el.style.textAlign = 'center';"
+         "el.style.padding = '10px 0';"
+         "el.innerHTML = \"<svg width='132' height='32' viewBox='0 0 132 32'>"
+         "<text x='2' y='25' font-size='26' font-weight='bold' fill='#00897b'>S</text>"
+         "<circle cx='30' cy='15' r='8' fill='#f5a623'/>"
+         "<g stroke='#f5a623' stroke-width='1.5' stroke-linecap='round'>"
+         "<line x1='40' y1='15' x2='44' y2='15'/>"
+         "<line x1='37' y1='22' x2='40' y2='25'/>"
+         "<line x1='30' y1='25' x2='30' y2='29'/>"
+         "<line x1='23' y1='22' x2='20' y2='25'/>"
+         "<line x1='20' y1='15' x2='16' y2='15'/>"
+         "<line x1='23' y1='8' x2='20' y2='5'/>"
+         "<line x1='30' y1='5' x2='30' y2='1'/>"
+         "<line x1='37' y1='8' x2='40' y2='5'/>"
+         "</g>"
+         "<text x='44' y='25' font-size='26' font-weight='bold' fill='#00897b'>lar32</text>"
+         "</svg>\";"
+         "document.body.insertBefore(el, document.body.firstChild);"
+         "});"
+         "</script>";
 }
 
 // --- RENDERING SCHERMO TFT CON GRIGLIA (stile card, coerente con la dashboard web) ---
@@ -290,11 +354,7 @@ void mostraInfoProdottoLCD() {
   tft.println("lar32");
 
   tft.setTextSize(1);
-  tft.setCursor(4, 28);
-  tft.setTextColor(ST7735_YELLOW);
-  tft.println("di Marco Ruggeri");
-
-  tft.drawFastHLine(0, 40, 160, ST7735_BLUE);
+  tft.drawFastHLine(0, 32, 160, ST7735_BLUE);
 
   tft.setCursor(4, 48);
   tft.setTextColor(ST7735_WHITE);
@@ -358,6 +418,14 @@ String clockIconSvg() {
   return "<svg width='16' height='16' viewBox='0 0 24 24'><circle cx='12' cy='12' r='9' stroke='#666' stroke-width='2' fill='none'/><path d='M12 7v5l3 3' stroke='#666' stroke-width='2' fill='none' stroke-linecap='round'/></svg>";
 }
 
+String infoIconSvg() {
+  return "<svg width='18' height='18' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10' fill='none' stroke='#37474f' stroke-width='2'/><rect x='11' y='10' width='2' height='7' fill='#37474f'/><rect x='11' y='6' width='2' height='2' fill='#37474f'/></svg>";
+}
+
+String wifiIconSvg() {
+  return "<svg width='18' height='18' viewBox='0 0 24 24'><path d='M2 8.5a15 15 0 0 1 20 0' stroke='#d32f2f' stroke-width='2' fill='none' stroke-linecap='round'/><path d='M5.5 12.5a10 10 0 0 1 13 0' stroke='#d32f2f' stroke-width='2' fill='none' stroke-linecap='round'/><path d='M9 16.3a5 5 0 0 1 6 0' stroke='#d32f2f' stroke-width='2' fill='none' stroke-linecap='round'/><circle cx='12' cy='19.5' r='1.3' fill='#d32f2f'/></svg>";
+}
+
 // --- PAGINA WEB DASHBOARD ---
 void handleRoot() {
   String html = "<!DOCTYPE html><html><head>";
@@ -392,8 +460,8 @@ void handleRoot() {
   html += "label { display:block; font-size: 13px; color:#555; margin-top:10px; }";
   html += "input[type=text], select { width: 100%; padding: 8px; margin-top:4px; border: 1px solid #ccc; border-radius: 6px; }";
   html += "button.submit { background: #00897b; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 16px; width:100%; }";
-  html += "button.info { background: #37474f; color:white; border:none; padding:10px 20px; border-radius:6px; font-size:16px; cursor:pointer; width:100%; margin-top:10px; }";
-  html += "button.danger { background: #d32f2f; color:white; border:none; padding:10px 20px; border-radius:6px; font-size:16px; cursor:pointer; width:100%; margin-top:10px; }";
+  html += ".action-row { display:flex; align-items:center; gap:10px; background:white; border-radius:8px; padding:12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom:10px; color:#333; font-size:14px; font-weight:bold; }";
+  html += ".action-row.danger { color:#d32f2f; }";
   html += "a { text-decoration:none; }";
   html += "@media (max-width: 600px) {";
   html += "  .layout { flex-direction: column; }";
@@ -448,8 +516,8 @@ void handleRoot() {
   html += "<button type='submit' class='submit'>Salva Configurazione</button>";
   html += "</form>";
   html += "</div>";
-  html += "<a href='/about'><button class='info'>Info Prodotto</button></a>";
-  html += "<a href='/resetwifi' onclick=\"return confirm('Reset Wi-Fi?');\"><button class='danger'>Reset Wi-Fi</button></a>";
+  html += "<a class='action-row' href='/about'>" + infoIconSvg() + "<span>Info Prodotto</span></a>";
+  html += "<a class='action-row danger' href='/resetwifi' onclick=\"return confirm('Reset Wi-Fi?');\">" + wifiIconSvg() + "<span>Reset Wi-Fi</span></a>";
   html += "</section>";
 
   html += "</div>"; // fine .content
@@ -482,15 +550,13 @@ void handleAbout() {
   html += "<style>";
   html += "body { font-family: Arial, sans-serif; text-align: center; background: #eceff1; margin:0; padding:20px; }";
   html += ".card { background: white; padding: 30px; border-radius: 12px; max-width: 450px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }";
-  html += "h1 { color: #00897b; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; }";
-  html += ".author { font-size: 16px; color: #555; margin-bottom: 20px; font-weight: bold; }";
+  html += "h1 { color: #00897b; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; }";
   html += "p { color: #444; font-size: 15px; line-height: 1.6; text-align: left; }";
   html += "button { background: #00897b; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 20px; }";
   html += "</style></head><body>";
   
   html += "<div class='card'>";
   html += "<h1>" + logoSvgHtml() + "</h1>";
-  html += "<div class='author'>di Marco Ruggeri</div>";
   html += "<p><b>SOLAR32</b> e un sistema IoT avanzato basato su ESP32 progettato per il monitoraggio in tempo reale e la previsione intelligente della produzione di impianti fotovoltaici.</p>";
   html += "<p>Integrando i dati meteorologici open-source ad alta precisione di <i>Open-Meteo</i> e adattandoli dinamicamente alla geometria specifica del tetto (potenza di picco, orientamento e inclinazione), offre stime accurate della produzione energetica direttamente su display locale e interfaccia web.</p>";
   html += "<a href='/'><button>Torna alla Dashboard</button></a>";
@@ -548,13 +614,16 @@ void setup() {
 
   WiFiManager wm;
   wm.setAPCallback(configModeCallback);
+  wm.setTitle("Solar32");
+  String wmHead = wifiManagerCustomHtml();
+  wm.setCustomHeadElement(wmHead.c_str());
 
   if (digitalRead(PIN_RESET_WIFI) == LOW) {
     wm.resetSettings();
     delay(1000);
   }
 
-  bool res = wm.autoConnect("ESP32-Control-AP");
+  bool res = wm.autoConnect("Solar32-AP");
 
   if (!res) {
     ESP.restart();
