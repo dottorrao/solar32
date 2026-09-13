@@ -144,78 +144,87 @@ void configModeCallback(WiFiManager *myWiFiManager) {
   tft.println("ESP32-Control-AP");
 }
 
-// --- RENDERING SCHERMO TFT CON GRIGLIA ---
+// --- RENDERING SCHERMO TFT CON GRIGLIA (stile card, coerente con la dashboard web) ---
 void aggiornaDisplay() {
-  tft.fillScreen(ST7735_BLACK);
-  
-  // 1. RIGA SUPERIORE: ORA E IP
+  uint16_t colBg        = tft.color565(18, 18, 18);    // sfondo nero carbone (#121212)
+  uint16_t colTopBarTx  = tft.color565(120, 144, 156); // ora/IP: grigio ardesia neutro (#78909C)
+  uint16_t colNowBg     = tft.color565(129, 199, 132); // box NOW: verde salvia (#81C784)
+  uint16_t colOggiBg    = tft.color565(100, 181, 246); // box OGGI TOT: azzurro polvere (#64B5F6)
+  uint16_t colLightBoxTx= tft.color565(33, 33, 33);    // testo scuro leggibile sulle card chiare
+  uint16_t colDayBg     = tft.color565(30, 41, 59);    // box giorni: grigio scuro opaco (#1E293B)
+  uint16_t colDayLabelTx= tft.color565(176, 190, 197); // etichette grigio chiaro sui box giorni
+  uint16_t colDayValueTx= tft.color565(253, 224, 71);  // valori kWh in giallo tenue (#FDE047)
+  uint16_t colDayBorder = tft.color565(60, 70, 80);    // bordo sottile per separare i box giorni dal nero
+
+  tft.fillScreen(colBg);
+
+  // 1. RIGA SUPERIORE: ORA E IP (testo neutro, informazioni di servizio in secondo piano)
   tft.setCursor(4, 4);
-  tft.setTextColor(ST7735_CYAN);
+  tft.setTextColor(colTopBarTx);
   tft.setTextSize(1);
   tft.print(getOraAttuale());
 
-  String ipStr = "IP:" + WiFi.localIP().toString();
+  String ipStr = WiFi.localIP().toString();
   int xIP = 160 - (int)(ipStr.length() * 6) - 2; // allineato a destra, con margine
   if (xIP < 40) xIP = 40; // non sovrapporre mai l'orario a sinistra
   tft.setCursor(xIP, 4);
-  tft.setTextColor(ST7735_MAGENTA);
+  tft.setTextColor(colTopBarTx);
   tft.print(ipStr);
-  
-  tft.drawFastHLine(0, 14, 160, ST7735_BLUE);
 
-  // 2. DATI GIORNO CORRENTE (DIVISO IN DUE COLONNE CENTRATE: 0-80 e 80-160 px)
-  
-  // --- COLONNA SINISTRA: ISTANTANEO (NOW) ---
+  tft.drawFastHLine(0, 14, 160, colTopBarTx);
+
+  // 2. DATI GIORNO CORRENTE (due card affiancate: istantaneo e totale oggi)
+  tft.fillRoundRect(2, 16, 76, 38, 5, colNowBg);
+  tft.fillRoundRect(82, 16, 76, 38, 5, colOggiBg);
+
+  // --- CARD SINISTRA: ISTANTANEO (NOW) ---
   String strNowTitle = "NOW";
-  int xNowTitle = (80 - (strNowTitle.length() * 6)) / 2;
-  tft.setCursor(xNowTitle, 17);
-  tft.setTextColor(ST7735_YELLOW);
+  int xNowTitle = 2 + (76 - (int)(strNowTitle.length() * 6)) / 2;
+  tft.setCursor(xNowTitle, 19);
+  tft.setTextColor(colLightBoxTx);
   tft.setTextSize(1);
   tft.print(strNowTitle);
-  
+
   String strNowVal = String((int)radiazioneIstantanea);
-  int xNowVal = (80 - (strNowVal.length() * 12)) / 2;
-  tft.setCursor(xNowVal, 27);
-  tft.setTextColor(ST7735_GREEN);
+  int xNowVal = 2 + (76 - (int)(strNowVal.length() * 12)) / 2;
+  tft.setCursor(xNowVal, 28);
+  tft.setTextColor(colLightBoxTx);
   tft.setTextSize(2);
   tft.print(strNowVal);
-  
+
   String strNowUnit = "W/m2";
-  int xNowUnit = (80 - (strNowUnit.length() * 6)) / 2;
-  tft.setCursor(xNowUnit, 43);
+  int xNowUnit = 2 + (76 - (int)(strNowUnit.length() * 6)) / 2;
+  tft.setCursor(xNowUnit, 45);
   tft.setTextSize(1);
+  tft.setTextColor(colLightBoxTx);
   tft.print(strNowUnit);
 
-  // Separatore verticale centrale
-  tft.drawFastVLine(80, 15, 37, ST7735_BLUE);
-
-  // --- COLONNA DESTRA: TOTALE OGGI ---
+  // --- CARD DESTRA: TOTALE OGGI ---
   String strOggiTitle = "OGGI TOT";
-  int xOggiTitle = 80 + (80 - (strOggiTitle.length() * 6)) / 2;
-  tft.setCursor(xOggiTitle, 17);
-  tft.setTextColor(ST7735_YELLOW);
+  int xOggiTitle = 82 + (76 - (int)(strOggiTitle.length() * 6)) / 2;
+  tft.setCursor(xOggiTitle, 19);
+  tft.setTextColor(colLightBoxTx);
   tft.setTextSize(1);
   tft.print(strOggiTitle);
 
   String strOggiVal = String(previsioni7Giorni[0], 1);
-  int xOggiVal = 80 + (80 - (strOggiVal.length() * 12)) / 2;
-  tft.setCursor(xOggiVal, 27);
-  tft.setTextColor(ST7735_CYAN);
+  int xOggiVal = 82 + (76 - (int)(strOggiVal.length() * 12)) / 2;
+  tft.setCursor(xOggiVal, 28);
+  tft.setTextColor(colLightBoxTx);
   tft.setTextSize(2);
   tft.print(strOggiVal);
 
   String strOggiUnit = "kWh";
-  int xOggiUnit = 80 + (80 - (strOggiUnit.length() * 6)) / 2;
-  tft.setCursor(xOggiUnit, 43);
+  int xOggiUnit = 82 + (76 - (int)(strOggiUnit.length() * 6)) / 2;
+  tft.setCursor(xOggiUnit, 45);
   tft.setTextSize(1);
+  tft.setTextColor(colLightBoxTx);
   tft.print(strOggiUnit);
 
-  tft.drawFastHLine(0, 53, 160, ST7735_BLUE);
-
-  // 3. PREVISIONI PROSSIMI 6 GIORNI IN kWh TOTALI (GRIGLIA 2x3, partendo da indice 1)
+  // 3. PREVISIONI PROSSIMI 6 GIORNI IN kWh TOTALI (GRIGLIA 2x3)
   int startY = 57;
   int colWidth = 53;
-  int rowHeight = 35;
+  int rowHeight = 33;
 
   for (int i = 1; i <= 6; i++) {
     int idx = i - 1;
@@ -225,20 +234,22 @@ void aggiornaDisplay() {
     int x = col * colWidth + 2;
     int y = startY + (row * rowHeight);
 
-    // Titolo Giorno
-    tft.setCursor(x, y);
-    tft.setTextColor(ST7735_WHITE);
+    tft.fillRoundRect(x, y, colWidth - 4, rowHeight - 4, 4, colDayBg);
+    tft.drawRoundRect(x, y, colWidth - 4, rowHeight - 4, 4, colDayBorder);
+
+    // Nome giorno in grassetto (font base senza bold: si simula ridisegnando con 1px di scarto)
+    tft.setCursor(x + 4, y + 3);
+    tft.setTextColor(colDayLabelTx);
     tft.setTextSize(1);
     tft.print(nomiGiorni[i]);
+    tft.setCursor(x + 5, y + 3);
+    tft.print(nomiGiorni[i]);
 
-    // Valore previsto in kWh totali stimati
-    tft.setCursor(x, y + 10);
-    tft.setTextColor(ST7735_YELLOW);
+    tft.setCursor(x + 4, y + 13);
+    tft.setTextColor(colDayValueTx);
     tft.setTextSize(1);
     tft.print(previsioni7Giorni[i], 1);
-    
-    tft.setTextColor(ST7735_WHITE);
-    tft.setTextSize(1);
+    tft.setTextColor(colDayLabelTx);
     tft.print("kWh");
   }
 }
@@ -247,22 +258,27 @@ void aggiornaDisplay() {
 void mostraInfoProdottoLCD() {
   tft.fillScreen(ST7735_BLACK);
 
-  // Icona sole disegnata con le primitive grafiche (nessun file immagine necessario)
-  int cx = 137, cy = 18, r = 8;
-  tft.fillCircle(cx, cy, r, ST7735_YELLOW);
-  for (int a = 0; a < 360; a += 45) {
-    float rad = a * 3.14159 / 180.0;
-    int x1 = cx + (r + 3) * cos(rad);
-    int y1 = cy + (r + 3) * sin(rad);
-    int x2 = cx + (r + 7) * cos(rad);
-    int y2 = cy + (r + 7) * sin(rad);
-    tft.drawLine(x1, y1, x2, y2, ST7735_YELLOW);
-  }
-
+  // Logo: la "o" di "Solar32" sostituita da un'icona sole (stesso logo delle pagine web)
   tft.setCursor(4, 6);
   tft.setTextColor(ST7735_CYAN);
   tft.setTextSize(2);
-  tft.println("SOLAR32");
+  tft.print("S");
+
+  int cx = 28, cy = 14, r = 7;
+  tft.fillCircle(cx, cy, r, ST7735_YELLOW);
+  for (int a = 0; a < 360; a += 45) {
+    float rad = a * 3.14159 / 180.0;
+    int x1 = cx + (r + 2) * cos(rad);
+    int y1 = cy + (r + 2) * sin(rad);
+    int x2 = cx + (r + 6) * cos(rad);
+    int y2 = cy + (r + 6) * sin(rad);
+    tft.drawLine(x1, y1, x2, y2, ST7735_YELLOW);
+  }
+
+  tft.setCursor(42, 6);
+  tft.setTextColor(ST7735_CYAN);
+  tft.setTextSize(2);
+  tft.println("lar32");
 
   tft.setTextSize(1);
   tft.setCursor(4, 28);
@@ -286,6 +302,25 @@ void mostraInfoProdottoLCD() {
   tft.println("del tuo impianto.");
 }
 
+// --- LOGO SVG ("Solar32" con la "o" sostituita da un sole) RIUSATO NELLE PAGINE WEB ---
+String logoSvgHtml() {
+  return "<svg width='108' height='26' viewBox='0 0 132 32' style='vertical-align:middle;margin-right:6px;'>"
+         "<text x='2' y='25' font-size='26' font-weight='bold' fill='currentColor'>S</text>"
+         "<circle cx='30' cy='15' r='8' fill='#f5a623'/>"
+         "<g stroke='#f5a623' stroke-width='1.5' stroke-linecap='round'>"
+         "<line x1='40' y1='15' x2='44' y2='15'/>"
+         "<line x1='37' y1='22' x2='40' y2='25'/>"
+         "<line x1='30' y1='25' x2='30' y2='29'/>"
+         "<line x1='23' y1='22' x2='20' y2='25'/>"
+         "<line x1='20' y1='15' x2='16' y2='15'/>"
+         "<line x1='23' y1='8' x2='20' y2='5'/>"
+         "<line x1='30' y1='5' x2='30' y2='1'/>"
+         "<line x1='37' y1='8' x2='40' y2='5'/>"
+         "</g>"
+         "<text x='44' y='25' font-size='26' font-weight='bold' fill='currentColor'>lar32</text>"
+         "</svg>";
+}
+
 // --- PAGINA WEB DASHBOARD ---
 void handleRoot() {
   String html = "<!DOCTYPE html><html><head>";
@@ -296,7 +331,7 @@ void handleRoot() {
   html += "body { font-family: Arial, sans-serif; background: #eceff1; margin:0; padding:0; color:#333; }";
   html += ".layout { display: flex; min-height: 100vh; }";
   html += ".sidebar { width: 170px; background: #263238; color: white; display: flex; flex-direction: column; flex-shrink: 0; }";
-  html += ".sidebar .brand { padding: 20px 15px; font-size: 20px; font-weight: bold; color: #4db6ac; border-bottom: 1px solid #37474f; }";
+  html += ".sidebar .brand { padding: 20px 15px; font-size: 20px; font-weight: bold; color: #4db6ac; border-bottom: 1px solid #37474f; display: flex; align-items: center; }";
   html += ".navbtn { background: none; border: none; color: #cfd8dc; text-align: left; padding: 14px 18px; font-size: 15px; cursor: pointer; border-left: 4px solid transparent; }";
   html += ".navbtn:hover { background: #37474f; }";
   html += ".navbtn.active { background: #37474f; color: white; border-left: 4px solid #00897b; font-weight: bold; }";
@@ -329,7 +364,7 @@ void handleRoot() {
 
   html += "<div class='layout'>";
   html += "<div class='sidebar'>";
-  html += "<div class='brand'>SOLAR32</div>";
+  html += "<div class='brand'>" + logoSvgHtml() + "</div>";
   html += "<button class='navbtn active' id='btn-monitor' onclick=\"showSection('monitor')\">Monitoraggio</button>";
   html += "<button class='navbtn' id='btn-config' onclick=\"showSection('config')\">Impostazioni</button>";
   html += "</div>";
@@ -402,14 +437,14 @@ void handleAbout() {
   html += "<style>";
   html += "body { font-family: Arial, sans-serif; text-align: center; background: #eceff1; margin:0; padding:20px; }";
   html += ".card { background: white; padding: 30px; border-radius: 12px; max-width: 450px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }";
-  html += "h1 { color: #00897b; margin-bottom: 5px; }";
+  html += "h1 { color: #00897b; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; }";
   html += ".author { font-size: 16px; color: #555; margin-bottom: 20px; font-weight: bold; }";
   html += "p { color: #444; font-size: 15px; line-height: 1.6; text-align: left; }";
   html += "button { background: #00897b; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 20px; }";
   html += "</style></head><body>";
   
   html += "<div class='card'>";
-  html += "<h1>SOLAR32</h1>";
+  html += "<h1>" + logoSvgHtml() + "</h1>";
   html += "<div class='author'>di Marco Ruggeri</div>";
   html += "<p><b>SOLAR32</b> e un sistema IoT avanzato basato su ESP32 progettato per il monitoraggio in tempo reale e la previsione intelligente della produzione di impianti fotovoltaici.</p>";
   html += "<p>Integrando i dati meteorologici open-source ad alta precisione di <i>Open-Meteo</i> e adattandoli dinamicamente alla geometria specifica del tetto (potenza di picco, orientamento e inclinazione), offre stime accurate della produzione energetica direttamente su display locale e interfaccia web.</p>";
