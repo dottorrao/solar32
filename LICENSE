@@ -1,0 +1,51 @@
+SOLAR32 - Sistema di monitoraggio e previsione fotovoltaica
+Copyright (c) 2026 Marco Ruggeri
+
+Questo progetto (codice sorgente, documentazione e materiale associato) è
+distribuito sotto licenza:
+
+Creative Commons Attribuzione - Non Commerciale - Condividi allo stesso modo 4.0
+Internazionale (CC BY-NC-SA 4.0)
+
+Sei libero di:
+
+  - Condividere — copiare e ridistribuire il materiale con qualsiasi mezzo
+    e formato
+  - Modificare — remixare, trasformare il materiale e basarti su di esso
+    per le tue opere
+
+Il licenziante non può revocare questi diritti finché rispetti i termini
+della licenza.
+
+Alle seguenti condizioni:
+
+  - Attribuzione — Devi riconoscere una menzione di credito adeguata,
+    fornire un link alla licenza e indicare se sono state effettuate
+    modifiche. Puoi farlo in qualsiasi maniera ragionevole possibile, ma
+    non con modalità tali da suggerire che il licenziante avalli te o il
+    tuo utilizzo del materiale.
+
+  - NonCommerciale — Non puoi utilizzare il materiale per scopi
+    commerciali, inclusa la vendita di dispositivi assemblati o kit basati
+    su questo progetto, senza il permesso scritto dell'autore.
+
+  - Condividi allo stesso modo — Se remixi, trasformi il materiale o ti
+    basi su di esso, devi distribuire i tuoi contributi con la stessa
+    licenza del materiale originario.
+
+Nessuna restrizione ulteriore — Non puoi applicare termini legali o
+misure tecnologiche che impongano restrizioni superiori a quelle
+previste dalla licenza.
+
+Testo completo della licenza:
+https://creativecommons.org/licenses/by-nc-sa/4.0/deed.it
+
+---
+
+Nota: questo progetto si appoggia all'API gratuita di Open-Meteo
+(https://open-meteo.com), il cui utilizzo è consentito solo per scopi
+non commerciali. Se costruisci il tuo dispositivo per uso personale
+rientri in questo caso d'uso consentito. Se intendi invece assemblare e
+vendere dispositivi funzionanti, dovrai attivare un piano commerciale
+separato con Open-Meteo — questo progetto non fornisce né garantisce
+alcuna licenza commerciale per l'uso della loro API.
