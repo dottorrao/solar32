@@ -1,0 +1,10 @@
+stavo riguardando il codice:
+
+1) PIN_RESET_WIFI 0 => non ci serve più, togliamo tutto quello che lo riguarda
+2) Parametri Impianto & Coordinate predefinite: possiamo mettere dei valori più neutri? per esempio ROMA
+3) const unsigned long durataInfoLCD = 6000, mettere almeno 10 secondi
+4) mettere nella funzione categoriaMeteo commenti per i vari codici che arrivano da open meteo, non solo per i nostri
+5) griglioSole = grigliaSole (griglio!)
+6) mettere un commento nella funzione "disegnaIconaMeteoLCD" per definire per bene cos'è e perchè "11"
+7) in "aggiornaDatiSolari()" mettere una nota su come viene costruito l'URL
+8) mettere nel codice un esempio commentato di URL vero con il JSON tornato

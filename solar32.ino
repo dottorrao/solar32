@@ -203,6 +203,16 @@ void disegnaIconaMeteoLCD(int categoria, int x, int y) {
   }
 }
 
+// --- ESCAPE HTML: evita XSS quando si reinserisce input dell'utente (lat/lon) nella pagina ---
+String escapeHtml(String testo) {
+  testo.replace("&", "&amp;"); // deve restare il primo replace, altrimenti raddoppia le entità appena inserite
+  testo.replace("<", "&lt;");
+  testo.replace(">", "&gt;");
+  testo.replace("\"", "&quot;");
+  testo.replace("'", "&#39;");
+  return testo;
+}
+
 // --- FUNZIONE PER CALCOLARE IL FATTORE DI CONVERSIONE K PERSONALIZZATO ---
 // Orientamento e inclinazione sono già considerati da Open-Meteo tramite i
 // parametri tilt/azimuth (vedi aggiornaDatiSolari): qui restano solo le
@@ -727,8 +737,8 @@ void handleRoot() {
   html += "<h2>Impostazioni</h2>";
   html += "<div class='card-block'>";
   html += "<form action='/setlocation' method='POST'>";
-  html += "<label>Latitudine</label><input type='text' name='lat' value='" + latitude + "'>";
-  html += "<label>Longitudine</label><input type='text' name='lon' value='" + longitude + "'>";
+  html += "<label>Latitudine</label><input type='text' name='lat' value='" + escapeHtml(latitude) + "'>";
+  html += "<label>Longitudine</label><input type='text' name='lon' value='" + escapeHtml(longitude) + "'>";
   html += "<label>Potenza Impianto (kWp)</label><input type='text' name='kwp' value='" + String(kWpImpianto) + "'>";
   html += "<label>Inclinazione (&deg;)</label><input type='text' name='incl' value='" + String(inclinazione) + "'>";
   html += "<label>Orientamento bussola (&deg;: 0=Nord, 90=Est, 180=Sud, 270=Ovest)</label>";

@@ -1,0 +1,34 @@
+<p>vi presento un piccolo progetto che ho realizzato negli ultimi giorni: <strong>SOLAR32</strong>, un dispositivo basato su ESP32 che mostra su un display LCD e su una pagina web l'irraggiamento istantaneo e la stima di produzione del proprio impianto fotovoltaico, con previsioni per i prossimi 7 giorni.</p>
+
+<p>⚠️ <strong>È ancora in fase di test</strong>: lo sto validando da un paio di giorni sul mio impianto, i primi risultati sono incoraggianti (vedi sotto) ma non ho ancora dati su condizioni meteo diverse (pioggia, nuvolosità variabile, stagioni diverse). Lo condivido comunque perché penso possa interessare, e più feedback/test da configurazioni diverse ricevo, meglio riesco a modificarlo e testarlo.</p>
+
+<h2>Cosa fa</h2>
+<ul>
+<li>Mostra l'irraggiamento solare istantaneo (W/m²) sul piano reale del pannello</li>
+<li>Stima la produzione di oggi e dei prossimi 6 giorni (kWh)</li>
+<li>Mostra un'icona meteo per ogni giorno (sole, nuvoloso, pioggia, neve, temporale, nebbia)</li>
+<li>Dashboard web accessibile da qualsiasi dispositivo in rete locale, per configurare impianto e vedere i dati con più comodità</li>
+<li>Tutto configurabile via web: coordinate, potenza di picco (kWp), inclinazione e orientamento del tetto (bussola), connessione al WiFi di casa</li>
+</ul>
+
+<h2>Come funziona</h2>
+<p>Non legge dati dall'inverter (ho preferito non metterci le mani) — è una stima basata sui dati meteo di <a href="https://open-meteo.com">Open-Meteo</a>, un servizio gratuito e open, accessibile via API. La parte interessante è che non usa la semplice radiazione orizzontale: interroga l'API specificando <strong>inclinazione e orientamento reali del tetto</strong> (parametri <code>tilt</code>/<code>azimuth</code>), ottenendo l'irraggiamento calcolato proprio sul piano del pannello.</p>
+
+<p>Sto confrontando le stime con la produzione reale del mio impianto: con l'orientamento configurato correttamente (bussola alla mano, non "a stima"), i primi due giorni di test hanno dato uno scarto del <strong>2-3%</strong> — dato preliminare, ma incoraggiante per un dispositivo da poche decine di euro di componenti. Continuerò a monitorarlo nei prossimi giorni/settimane per capire quanto regge su condizioni meteo diverse.</p>
+
+<h2>Hardware</h2>
+<ul>
+<li>ESP32</li>
+<li>Display TFT ST7735 (SPI)</li>
+<li>Nessun altro sensore: tutto il dato viene da Open-Meteo via WiFi</li>
+</ul>
+
+<h2>Software</h2>
+<ul>
+<li>Configurazione WiFi tramite WiFiManager (crea un access point "Solar32-AP" al primo avvio)</li>
+<li>Dashboard web con sezione Monitoraggio e Impostazioni</li>
+<li>Codice ESP32, disponibile su GitHub: <a href="https://github.com/dottorrao/solar32">https://github.com/dottorrao/solar32</a></li>
+</ul>
+
+<h2>Foto</h2>
+<p>[inserire foto del display e della dashboard web]</p>
