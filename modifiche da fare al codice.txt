@@ -8,3 +8,4 @@ stavo riguardando il codice:
 6) mettere un commento nella funzione "disegnaIconaMeteoLCD" per definire per bene cos'è e perchè "11"
 7) in "aggiornaDatiSolari()" mettere una nota su come viene costruito l'URL
 8) mettere nel codice un esempio commentato di URL vero con il JSON tornato
+9) mettere nel codice un commento su come vengono calcolate le icone del meteo
